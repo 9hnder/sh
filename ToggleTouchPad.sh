@@ -6,7 +6,7 @@
 #   DESCRIPTION:  タッチパッドの 有効/無効 状態を反転する.
 #
 #       OPTIONS:  usage() 関数を参照.
-#  REQUIREMENTS:  "仕様コマンドの定義" セクションを参照.
+#  REQUIREMENTS:  "使用コマンドの定義" セクションを参照.
 #          BUGS:  ---
 #         NOTES:  ---
 #        AUTHOR:  9hnder(Ken Shirakawa)
