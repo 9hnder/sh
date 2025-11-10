@@ -10,5 +10,5 @@ Flip enable/disable your laptop's touchpad.
 You can also specify enable/disable as an `-m` or `--mode` option. This script
 is written in Japanese and has output in Japanese.
 
-
+@see: [Details is here](https://qiita.com/9hnder/items/662904e46b800a140c60)
 
