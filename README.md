@@ -13,5 +13,4 @@ You can also specify enable/disable as an `-m` or `--mode` option. This script
 is written in Japanese and has output in Japanese.
 
 
-# vim:set ts=4 tw=0 ff=unix ft=markdown : This is vim modeline #
 
