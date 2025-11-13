@@ -174,6 +174,9 @@ function get_touchpad_devicename_and_status()
 	local     s_device=''				# タッチパッドのデバイス名.
 	local let i_now_status_flag=0		# 現在の状態フラグ. {0:無効, 1:有効}
 
+	# NOTE: プログラム的には list サブコマンドの出力から デバイス名 の代わりに
+	#       id を取得して使う方がスマートではある.  しかし、デバイス名の方が端
+	#       末や通知への出力にも利用でき、ユーザーに優しい.
 	s_result=`xinput list --name-only | grep -m 1 -i TouchPad`
 	if [ $? -ne 0 ] ; then
 		message_output 'ERROR: xinput list コマンドが失敗しました。' 2
@@ -291,8 +294,10 @@ function usage()
 	無効化し、無効な状態で実行すれば有効化する。
 
 	【動作条件】
-	Linux の GUI 環境下でのみ動作。 xinput コマンドが必要。
-	デスクトップ通知用に notify-send コマンドが必要。
+	Linux の GUI 環境(Xorg/Wayland セッション)下でのみ動作。 xinput コマンドが
+	必要。デスクトップ通知用に notify-send コマンドが必要。
+	ただし、もし libinput 以外のドライバ(e.g. evdev や synaptics) を使用してい
+	る場合は動作しない。
 
 	EOT
 	`
