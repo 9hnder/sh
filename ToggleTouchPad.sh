@@ -235,7 +235,12 @@ function toggle_touchpad()
 #=============================================================================
 function exists_needed_commands()
 {
-	local s_commands=`alias -p | sed -e 's/^alias //' -e 's/=.*//'`
+	# BUG: 現状、先頭のトークンがコマンドと仮定して調べる仕様である. このため
+	#      トークンの前に変数定義(e.g. 'LANG=C grep -E')があると それを誤って
+	#      コマンドとして調べてしまうだろう. しかし、これは回避し難いため仕様
+	#      上の制限とする.
+	local s_commands=$( alias -p | sed -r -e 's/^alias //' -e 's/[^=]+=//' \
+	  -e "s/['\"\`\\]//g" -e 's/ .+$//' )
 
 	type -P $s_commands >/dev/null
 	if [ $? -ne 0 ] ; then
