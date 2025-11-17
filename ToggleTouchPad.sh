@@ -12,11 +12,13 @@
 #        AUTHOR:  9hnder(Ken Shirakawa)
 #       COMPANY:  Electoronic Cybernized co., ltd.
 #    POWERED-BY:  vim - Vi IMproved, bash-support vim plugin
-#       VERSION:  1.0.2
-#       CREATED:  2025/10/07
-#       UPDATED:  2025/10/08 * notify-send でデスクトップ通知するよう改良.
-#              :  2025/10/20 * which -s は最新バージョンでしか使えなかった為、
+#       VERSION:  1.0.3
+#       CREATED:  2025-10-07
+#       UPDATED:  2025-10-08 * notify-send でデスクトップ通知するよう改良.
+#              :  2025-10-20 * which -s は最新バージョンでしか使えなかった為、
 #              :               >/dev/null に変更. ＆ which -> type -P に変更.
+#              :  2025-11-16 * デバイス名に TouchPad が含まれず、 Synaptics が
+#              :               替わりに含まれている場合に対応.
 #=============================================================================
 
 ##############################################################################
@@ -41,7 +43,7 @@ alias notify-send=\notify-send
 ##############################################################################
 # 定数定義                                                    Define Constants
 ##############################################################################
-readonly DEF_VERSION=1.0.2
+readonly DEF_VERSION=1.0.3
 readonly DEF_EXIT_SUCCESS=0
 readonly DEF_EXIT_FAILURE=1
 readonly DEF_OPT_MODE_TOGGLE='toggle'
@@ -177,7 +179,7 @@ function get_touchpad_devicename_and_status()
 	# NOTE: プログラム的には list サブコマンドの出力から デバイス名 の代わりに
 	#       id を取得して使う方がスマートではある.  しかし、デバイス名の方が端
 	#       末や通知への出力にも利用でき、ユーザーに優しい.
-	s_result=`xinput list --name-only | grep -m 1 -i TouchPad`
+	s_result=`xinput list --name-only | grep -m 1 -Ei 'TouchPad|Synaptics'`
 	if [ $? -ne 0 ] ; then
 		message_output 'ERROR: xinput list コマンドが失敗しました。' 2
 		return $DEF_EXIT_FAILURE
@@ -302,7 +304,7 @@ function usage()
 	Linux の GUI 環境(Xorg/Wayland セッション)下でのみ動作。 xinput コマンドが
 	必要。デスクトップ通知用に notify-send コマンドが必要。
 	ただし、もし libinput 以外のドライバ(e.g. evdev や synaptics) を使用してい
-	る場合は動作しない。
+	る場合は動作しないかもしれない。
 
 	EOT
 	`
