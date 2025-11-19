@@ -19,6 +19,8 @@
 #              :               >/dev/null に変更. ＆ which -> type -P に変更.
 #              :  2025-11-16 * デバイス名に TouchPad が含まれず、 Synaptics が
 #              :               替わりに含まれている場合に対応.
+#              :  2025-11-19 * --report, --reset オプションを追加.
+#              :             * usage の記載違いを修正.
 #=============================================================================
 
 ##############################################################################
@@ -37,6 +39,10 @@ alias grep=\grep
 alias logger=\logger
 alias xinput=\xinput
 alias notify-send=\notify-send
+alias tput=\tput
+#alias journalctl=\journalctl	# dmesg のみの機種でも動くようコメントアウト.
+alias sudo=\sudo
+alias modprobe=\modprobe
 # 外部スクリプト
 
 
@@ -50,6 +56,17 @@ readonly DEF_OPT_MODE_TOGGLE='toggle'
 readonly DEF_OPT_MODE_ENABLE='enable'
 readonly DEF_OPT_MODE_DISABLE='disable'
 readonly DEF_OPT_MODE_STATUS='status'
+readonly DEF_COLOR_DEFAULT=$(tput sgr0)
+readonly DEF_COLOR_BLACK=$(tput bold; tput setaf 0)
+readonly DEF_COLOR_RED=$(tput bold; tput setaf 1)
+readonly DEF_COLOR_GREEN=$(tput bold; tput setaf 2)
+readonly DEF_COLOR_YELLOW=$(tput bold; tput setaf 3)
+readonly DEF_COLOR_BLUE=$(tput bold; tput setaf 4)
+readonly DEF_COLOR_MAGENTA=$(tput bold; tput setaf 5)
+readonly DEF_COLOR_CYAN=$(tput bold; tput setaf 6)
+readonly DEF_COLOR_WHITE=$(tput bold; tput setaf 7)
+readonly DEF_XORG_LOGFILE=/var/log/Xorg.0.log
+
 
 
 ##############################################################################
@@ -174,7 +191,7 @@ function get_touchpad_devicename_and_status()
 {
 	local     s_result=''				# コマンド結果を一時的に格納.
 	local     s_device=''				# タッチパッドのデバイス名.
-	local let i_now_status_flag=0		# 現在の状態フラグ. {0:無効, 1:有効}
+	local let b_now_status_flag=0		# 現在の状態フラグ. {0:無効, 1:有効}
 
 	# NOTE: プログラム的には list サブコマンドの出力から デバイス名 の代わりに
 	#       id を取得して使う方がスマートではある.  しかし、デバイス名の方が端
@@ -187,7 +204,7 @@ function get_touchpad_devicename_and_status()
 	s_device=`echo "$s_result" | sed -r 's/^∼ //g'`
 
 	if [ "$s_device" == "$s_result" ] ; then
-		let i_now_status_flag=1
+		let b_now_status_flag=1
 		if [ $gi_verbose_flag -eq 1 ] ; then
 			message_output "現在の $s_device の状態：有効。"
 		fi
@@ -195,7 +212,7 @@ function get_touchpad_devicename_and_status()
 		message_output "現在の $s_device の状態：無効。"
 	fi
 
-	let gi_result=$i_now_status_flag
+	let gi_result=$b_now_status_flag
 	gs_result="$s_device"
 }
 
@@ -203,25 +220,112 @@ function get_touchpad_devicename_and_status()
 #          NAME:  toggle_touchpad()
 #   DESCRIPTION:  タッチパッドの 有効/無効 状態を反転する.
 #    PARAMETERS:  $1: s_device:タッチパッドのデバイス名.
-#              :  $2: i_now_status_flag:現在の状態フラグ {0:無効, 1:有効}
+#              :  $2: b_now_status_flag:現在の状態フラグ {0:無効, 1:有効}
 #       RETURNS:  結果 { DEF_EXIT_SUCCESS:成功, DEF_EXIT_FAILURE:失敗 }
 #        OUTPUT:  エラーが出ない限り無し.
 #=============================================================================
 function toggle_touchpad()
 {
 	local     s_device="$1"
-	local let i_now_status_flag=$2
+	local let b_now_status_flag=$2
 
 	if [ $# -lt 2 ] ; then
 		return $DEF_EXIT_FAILURE
 	fi
 
 	# 現在の状態から反転させる.
-	if [ $i_now_status_flag -eq 0 ] ; then
+	if [ $b_now_status_flag -eq 0 ] ; then
 		touchpad_enable "$s_device"
 	else
 		touchpad_disable "$s_device"
 	fi
+	if [ $? -ne 0 ] ; then
+		return $DEF_EXIT_FAILURE
+	fi
+
+	return $DEF_EXIT_SUCCESS
+}
+
+#===  FUNCTION  ==============================================================
+#          NAME:  report_touchpad_driver()
+#   DESCRIPTION:  タッチパッドが使用しているドライバ情報を表示する.
+#    PARAMETERS:  $1: s_device:タッチパッドのデバイス名.
+#       RETURNS:  結果 { DEF_EXIT_SUCCESS:成功, DEF_EXIT_FAILURE:失敗 }
+#        OUTPUT:  タッチパッド関連情報を端末へ出力.
+#          NOTE:  本スクリプトが正常動作しない場合、ユーザーが使用している環境
+#                 を調べ、報告に使用してもらう用途を想定.
+#=============================================================================
+function report_touchpad_driver()
+{
+	local     s_device="$1"
+	local     s_result1=''					# 結果の一時格納用.
+	local     s_result2=''					# 結果の一時格納用.
+
+	if [ $# -ne 1 ] ; then
+		return $DEF_EXIT_FAILURE
+	fi
+
+	# 端末での実行でない場合はエラーを表示して終了.
+	if [ ! -t 0 ] ; then
+		message_output 'ERROR: -r/--report オプションは端末上でのみ実行可能です。' 2
+		return $DEF_EXIT_FAILURE
+	fi
+
+	# Xorg のログからドライバ認識部分を抽出.
+	s_result1=$( grep -Ei "Using input driver .*$s_device" $DEF_XORG_LOGFILE )
+	if [ $? -ne 0 -o -z "$s_result1" ] ; then
+		message_output 'ERROR: Xorg ログからドライバ情報の取得が失敗しました。' 2
+	fi
+
+	# プロパティの抽出.
+	s_result2=$( xinput --list-props "$s_device" )
+	if [ $? -ne 0 ] ; then
+		message_output 'ERROR: xinput コマンドのプロパティ取得が失敗しました。' 2
+	fi
+
+	# カラー端末ではカラー出力する.
+	if [ "`tput colors`" -ge 8 ] ; then
+		echo    "${DEF_COLOR_GREEN}# Xorg のログ情報:${DEF_COLOR_DEFAULT}"
+		s_result1=$( echo "$s_result1" | sed -r \
+		  -e "s/(Using input driver )(.*)(for )(.+)/\1$DEF_COLOR_RED\2$DEF_COLOR_DEFAULT\3$DEF_COLOR_MAGENTA\4$DEF_COLOR_DEFAULT/" )
+		echo -e "$s_result1"
+		echo -e "\n${DEF_COLOR_GREEN}# xinput のプロパティ情報:${DEF_COLOR_DEFAULT}"
+		s_result2=$( echo "$s_result2" | sed -r \
+		  -e "s/(libinput|Synaptics|Evdev)/$DEF_COLOR_CYAN\1$DEF_COLOR_DEFAULT/" \
+		  -e "s/(\([[:digit:]]+\)):([[:space:]]+.+)/$DEF_COLOR_BLUE\1$DEF_COLOR_DEFAULT:$DEF_COLOR_YELLOW\2$DEF_COLOR_DEFAULT/" )
+		echo -e "$s_result2"
+	else
+		echo -e "\n# Xorg のログ:"
+		echo "$s_result1"
+		echo -e "\n# xinput のプロパティ情報:"
+		echo "$s_result2"
+	fi
+
+	# journalctl/dmesg の表示.
+	if [ -n "`type -P journalctl`" ] ; then
+		echo -e "\n${DEF_COLOR_GREEN}# journalctl のログ情報:${DEF_COLOR_DEFAULT}"
+		journalctl --no-pager --case-sensitive=0 -kg 'SynPS/2|Synaptics|TouchPad'
+	else
+		echo -e "\n${DEF_COLOR_GREEN}# dmesg のログ情報:${DEF_COLOR_DEFAULT}"
+		dmesg | grep -iE 'SynPS/2|Synaptics|TouchPad'
+	fi
+
+	return $DEF_EXIT_SUCCESS
+}
+
+#===  FUNCTION  ==============================================================
+#          NAME:  reset_touchpad_driver()
+#   DESCRIPTION:  タッチパッドのドライバを再読込する.
+#    PARAMETERS:  ---
+#       RETURNS:  結果 { DEF_EXIT_SUCCESS:成功, DEF_EXIT_FAILURE:失敗 }
+#=============================================================================
+function reset_touchpad_driver()
+{
+	# NOTE: libinput, synaptics, evdev いずれを使う場合もカーネルモジュールは
+	#       psmouse が主体となっている. これを再読込することでリセット可能.
+	sudo modprobe -r psmouse
+	sleep 1
+	sudo modprobe    psmouse
 	if [ $? -ne 0 ] ; then
 		return $DEF_EXIT_FAILURE
 	fi
@@ -285,8 +389,9 @@ function version()
 function usage()
 {
 	local let i_output=${1:-1}
-	printf "Usage: %s [-v][-e|-d]\n" ${0##*/} >&$i_output
-	printf "Usage: %s [-Vh]\n" ${0##*/} >&$i_output
+	printf "Usage: %s [-v][-m MODE]\n" ${0##*/} >&$i_output
+	printf "     : %s [-rR]\n" ${0##*/} >&$i_output
+	printf "     : %s [-Vh]\n\n" ${0##*/} >&$i_output
 	s_text=`cat <<- EOT
 	    -v,       --verbose     実行前の状態も含め、詳しく表示。
 	    -m MODE,  --mode=MODE   実行モードを指定。
@@ -294,6 +399,8 @@ function usage()
 	                                   enable:  有効化する,
 	                                   disable: 無効化する,
 	                                   status:  状態の表示のみ }
+	    -r,       --report      使用ドライバ情報とプロパティ等を表示。
+	    -R,       --reset       ドライバを再読込し、デバイスをリセットする。
 	    -V,       --version     バージョンの表示。
 	    -h,       --help        使用方法の表示。
 
@@ -334,6 +441,8 @@ function translate_long_options()
 			gas_result[$(($i_index+1))]="$s_arg_param"
 			let i_index=$(($i_index+2))
 		else
+			s_arg="${s_arg//--report/-r}"
+			s_arg="${s_arg//--reset/-R}"
 			s_arg="${s_arg//--verbose/-v}"
 			s_arg="${s_arg//--version/-V}"
 			s_arg="${s_arg//--help/-h}"
@@ -353,12 +462,22 @@ function main()
 {
 	local let i_mode_flag=0			# 実行モード { 0:反転, 1:有効化, 2:無効化, 3:状態 }
 	local     s_device=''			# タッチパッドのデバイス名.
-	local let i_now_status_flag=0	# 現在の状態フラグ. {0:無効, 1:有効}
+	local let b_now_status_flag=0	# 現在の状態フラグ. {0:無効, 1:有効}
+	local let b_report_flag=0		# 使用ドライバのチェックフラグ. {0:無効, 1:有効}
+	local let b_reset_flag=0		# ドライバのリセット指定フラグ. {0:無効, 1:有効}
 
 	# コマンドライン・オプションの処理
-	while getopts 'm:vVh' opt $@
+	while getopts 'rRm:vVh' opt $@
 	do
 		case $opt in
+		r )
+			# 使用ドライバのチェック オプションの処理
+			let b_report_flag=1
+			;;
+		R )
+			# ドライバのリセット指定 オプションの処理
+			let b_reset_flag=1
+			;;
 		m )
 			# 実行モード オプションの処理
 			case "$OPTARG" in
@@ -419,7 +538,24 @@ function main()
 		return $DEF_EXIT_FAILURE
 	fi
 	s_device="$gs_result"
-	let i_now_status_flag=$gi_result
+	let b_now_status_flag=$gi_result
+
+	# ドライバのチェック
+	if [ $b_report_flag -eq 1 ] ; then
+		report_touchpad_driver "$s_device"
+		return $?
+	fi
+
+	# ドライバのリセット
+	if [ $b_reset_flag -eq 1 ] ; then
+		reset_touchpad_driver
+		if [ $? -ne $DEF_EXIT_SUCCESS ] ; then
+			message_output 'ERROR: タッチパッド・ドライバのリセットが失敗しました。' 2
+		elif [ $gi_verbose_flag -eq 1 ] ; then
+			message_output 'タッチパッド・ドライバをリセットしました。'
+		fi
+		return $DEF_EXIT_SUCCESS
+	fi
 
 	# 実行モードとして反転以外が指定されている場合は、それに従う
 	if [ $i_mode_flag -eq 1 ] ; then
@@ -433,7 +569,7 @@ function main()
 	fi
 
 	# 反転を実行
-	toggle_touchpad "$s_device" "$i_now_status_flag"
+	toggle_touchpad "$s_device" "$b_now_status_flag"
 	if [ $? -eq $DEF_EXIT_FAILURE ] ; then
 		return $DEF_EXIT_FAILURE
 	fi
