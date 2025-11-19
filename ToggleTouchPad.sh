@@ -12,7 +12,7 @@
 #        AUTHOR:  9hnder(Ken Shirakawa)
 #       COMPANY:  Electoronic Cybernized co., ltd.
 #    POWERED-BY:  vim - Vi IMproved, bash-support vim plugin
-#       VERSION:  1.0.3
+#       VERSION:  1.0.4
 #       CREATED:  2025-10-07
 #       UPDATED:  2025-10-08 * notify-send でデスクトップ通知するよう改良.
 #              :  2025-10-20 * which -s は最新バージョンでしか使えなかった為、
@@ -49,7 +49,7 @@ alias modprobe=\modprobe
 ##############################################################################
 # 定数定義                                                    Define Constants
 ##############################################################################
-readonly DEF_VERSION=1.0.3
+readonly DEF_VERSION=1.0.4
 readonly DEF_EXIT_SUCCESS=0
 readonly DEF_EXIT_FAILURE=1
 readonly DEF_OPT_MODE_TOGGLE='toggle'
