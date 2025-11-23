@@ -393,6 +393,7 @@ function usage()
 	printf "     : %s [-rR]\n" ${0##*/} >&$i_output
 	printf "     : %s [-Vh]\n\n" ${0##*/} >&$i_output
 	s_text=`cat <<- EOT
+	Options:
 	    -v,       --verbose     実行前の状態も含め、詳しく表示。
 	    -m MODE,  --mode=MODE   実行モードを指定。
 	                            MODE={ toggle:  状態を反転する(Default),
@@ -400,10 +401,11 @@ function usage()
 	                                   disable: 無効化する,
 	                                   status:  状態の表示のみ }
 	    -r,       --report      使用ドライバ情報とプロパティ等を表示。
-	    -R,       --reset       ドライバを再読込し、デバイスをリセットする。
+	    -R,       --reset       使用ドライバを再読込し、デバイスをリセット。
 	    -V,       --version     バージョンの表示。
 	    -h,       --help        使用方法の表示。
 
+	Note:
 	タッチパッドの 有効/無効 状態を反転する。すなわち、有効な状態で実行すれば
 	無効化し、無効な状態で実行すれば有効化する。
 
@@ -463,19 +465,19 @@ function main()
 	local let i_mode_flag=0			# 実行モード { 0:反転, 1:有効化, 2:無効化, 3:状態 }
 	local     s_device=''			# タッチパッドのデバイス名.
 	local let b_now_status_flag=0	# 現在の状態フラグ. {0:無効, 1:有効}
-	local let b_report_flag=0		# 使用ドライバのチェックフラグ. {0:無効, 1:有効}
-	local let b_reset_flag=0		# ドライバのリセット指定フラグ. {0:無効, 1:有効}
+	local let b_report_flag=0		# 使用ドライバのリポートフラグ. {0:無効, 1:有効}
+	local let b_reset_flag=0		# 使用ドライバのリセットフラグ. {0:無効, 1:有効}
 
 	# コマンドライン・オプションの処理
 	while getopts 'rRm:vVh' opt $@
 	do
 		case $opt in
 		r )
-			# 使用ドライバのチェック オプションの処理
+			# 使用ドライバのリポート オプションの処理
 			let b_report_flag=1
 			;;
 		R )
-			# ドライバのリセット指定 オプションの処理
+			# 使用ドライバのリセット指定 オプションの処理
 			let b_reset_flag=1
 			;;
 		m )
@@ -540,17 +542,18 @@ function main()
 	s_device="$gs_result"
 	let b_now_status_flag=$gi_result
 
-	# ドライバのチェック
+	# 使用ドライバのリポート
 	if [ $b_report_flag -eq 1 ] ; then
 		report_touchpad_driver "$s_device"
 		return $?
 	fi
 
-	# ドライバのリセット
+	# 使用ドライバのリセット
 	if [ $b_reset_flag -eq 1 ] ; then
 		reset_touchpad_driver
 		if [ $? -ne $DEF_EXIT_SUCCESS ] ; then
 			message_output 'ERROR: タッチパッド・ドライバのリセットが失敗しました。' 2
+			return $DEF_EXIT_FAILURE
 		elif [ $gi_verbose_flag -eq 1 ] ; then
 			message_output 'タッチパッド・ドライバをリセットしました。'
 		fi
